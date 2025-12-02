@@ -6,19 +6,20 @@ import { handleApiError, requireOrgMember, ApiError } from '@/lib/middleware/org
 // PUT /api/organizations/:orgId/outlines/:id - Update outline
 export async function PUT(
   req: NextRequest,
-  { params }: { params: { orgId: string; id: string } }
+  { params }: { params: Promise<{ orgId: string; id: string }> }
 ) {
   try {
+    const { orgId, id } = await params
     const session = await requireAuth()
-    await requireOrgMember(session.user.id, params.orgId)
+    await requireOrgMember(session.user.id, orgId)
 
     const body = await req.json()
 
     // Verify outline belongs to this organization
     const existingOutline = await prisma.outline.findFirst({
       where: {
-        id: params.id,
-        organizationId: params.orgId,
+        id: id,
+        organizationId: orgId,
       }
     })
 
@@ -41,16 +42,11 @@ export async function PUT(
       }
     }
 
-    if (body.reviewer) {
-      const validReviewers = ['Assim', 'Bini', 'Mami']
-      if (!validReviewers.includes(body.reviewer)) {
-        throw new ApiError(400, 'Invalid reviewer')
-      }
-    }
+
 
     // Update outline
     const outline = await prisma.outline.update({
-      where: { id: params.id },
+      where: { id: id },
       data: {
         ...(body.header && { header: body.header }),
         ...(body.sectionType && { sectionType: body.sectionType }),
@@ -70,17 +66,18 @@ export async function PUT(
 // DELETE /api/organizations/:orgId/outlines/:id - Delete outline
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { orgId: string; id: string } }
+  { params }: { params: Promise<{ orgId: string; id: string }> }
 ) {
   try {
+    const { orgId, id } = await params
     const session = await requireAuth()
-    await requireOrgMember(session.user.id, params.orgId)
+    await requireOrgMember(session.user.id, orgId)
 
     // Verify outline belongs to this organization
     const existingOutline = await prisma.outline.findFirst({
       where: {
-        id: params.id,
-        organizationId: params.orgId,
+        id: id,
+        organizationId: orgId,
       }
     })
 
@@ -90,7 +87,7 @@ export async function DELETE(
 
     // Delete outline
     await prisma.outline.delete({
-      where: { id: params.id }
+      where: { id: id }
     })
 
     return NextResponse.json({ 

@@ -4,10 +4,11 @@ import prisma from '@/lib/db/client'
 import { JoinOrgForm } from '@/components/organizations/join-org-form'
 
 interface JoinOrgPageProps {
-  params: { token: string }
+  params: Promise<{ token: string }>
 }
 
 export default async function JoinOrgPage({ params }: JoinOrgPageProps) {
+  const { token } = await params
   const session = await getSession()
   
   if (!session) {
@@ -16,7 +17,7 @@ export default async function JoinOrgPage({ params }: JoinOrgPageProps) {
 
   // Get invitation details
   const invitation = await prisma.invitation.findUnique({
-    where: { token: params.token },
+    where: { token: token },
     include: { organization: true }
   })
 
@@ -69,7 +70,7 @@ export default async function JoinOrgPage({ params }: JoinOrgPageProps) {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <JoinOrgForm 
-        token={params.token}
+        token={token}
         organizationName={invitation.organization.name}
       />
     </div>

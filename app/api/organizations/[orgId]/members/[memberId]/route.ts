@@ -6,15 +6,16 @@ import { handleApiError, requireOrgOwner, ApiError } from '@/lib/middleware/org-
 // DELETE /api/organizations/:orgId/members/:memberId - Remove member (Owner only)
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { orgId: string; memberId: string } }
+  { params }: { params: Promise<{ orgId: string; memberId: string }> }
 ) {
   try {
+    const { orgId, memberId } = await params
     const session = await requireAuth()
-    await requireOrgOwner(session.user.id, params.orgId)
+    await requireOrgOwner(session.user.id, orgId)
 
     // Get member to remove
     const member = await prisma.organizationMember.findUnique({
-      where: { id: params.memberId }
+      where: { id: memberId }
     })
 
     if (!member) {
@@ -22,7 +23,7 @@ export async function DELETE(
     }
 
     // Verify member belongs to this organization
-    if (member.organizationId !== params.orgId) {
+    if (member.organizationId !== orgId) {
       throw new ApiError(403, 'Member does not belong to this organization')
     }
 
@@ -38,7 +39,7 @@ export async function DELETE(
 
     // Delete member
     await prisma.organizationMember.delete({
-      where: { id: params.memberId }
+      where: { id: memberId }
     })
 
     return NextResponse.json({ 

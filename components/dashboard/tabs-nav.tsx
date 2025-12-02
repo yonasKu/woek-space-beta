@@ -13,8 +13,8 @@ export function TabsNav({ orgId }: TabsNavProps) {
 
   const tabs = [
     { name: 'Outline', href: `/organizations/${orgId}/outlines` },
-    { name: 'Past Performance', href: `/organizations/${orgId}/past-performance`, badge: '3' },
-    { name: 'Key Personnel', href: `/organizations/${orgId}/key-personnel`, badge: '2' },
+    { name: 'Past Performance', href: `/organizations/${orgId}/past-performance` },
+    { name: 'Key Personnel', href: `/organizations/${orgId}/key-personnel` },
     { name: 'Focus Documents', href: `/organizations/${orgId}/focus-documents` },
   ]
 

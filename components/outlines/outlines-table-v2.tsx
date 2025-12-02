@@ -43,6 +43,15 @@ export function OutlinesTableV2() {
     outline: null,
   })
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
+  const [visibleColumns, setVisibleColumns] = useState({
+    header: true,
+    sectionType: true,
+    status: true,
+    target: true,
+    limit: true,
+    reviewer: true,
+  })
   const rowsPerPage = 10
 
   useEffect(() => {
@@ -125,18 +134,70 @@ export function OutlinesTableV2() {
     return <div className="p-6">Loading...</div>
   }
 
+  function toggleRowSelection(id: string) {
+    const newSelected = new Set(selectedRows)
+    if (newSelected.has(id)) {
+      newSelected.delete(id)
+    } else {
+      newSelected.add(id)
+    }
+    setSelectedRows(newSelected)
+  }
+
+  function toggleAllRows() {
+    if (selectedRows.size === currentOutlines.length) {
+      setSelectedRows(new Set())
+    } else {
+      setSelectedRows(new Set(currentOutlines.map(o => o.id)))
+    }
+  }
+
+  function toggleColumn(column: keyof typeof visibleColumns) {
+    setVisibleColumns(prev => ({ ...prev, [column]: !prev[column] }))
+  }
+
   return (
     <div className="p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="text-sm text-gray-500">
-          {outlines.length > 0 && `0 of ${outlines.length} row(s) selected.`}
+          {selectedRows.size} of {outlines.length} row(s) selected.
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Settings className="mr-2 h-4 w-4" />
-            Customize Columns
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Settings className="mr-2 h-4 w-4" />
+                Customize Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => toggleColumn('header')}>
+                <input type="checkbox" checked={visibleColumns.header} readOnly className="mr-2" />
+                Header
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toggleColumn('sectionType')}>
+                <input type="checkbox" checked={visibleColumns.sectionType} readOnly className="mr-2" />
+                Type
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toggleColumn('status')}>
+                <input type="checkbox" checked={visibleColumns.status} readOnly className="mr-2" />
+                Status
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toggleColumn('target')}>
+                <input type="checkbox" checked={visibleColumns.target} readOnly className="mr-2" />
+                Target
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toggleColumn('limit')}>
+                <input type="checkbox" checked={visibleColumns.limit} readOnly className="mr-2" />
+                Limit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toggleColumn('reviewer')}>
+                <input type="checkbox" checked={visibleColumns.reviewer} readOnly className="mr-2" />
+                Reviewer
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button onClick={handleAdd} size="sm">
             <Plus className="mr-2 h-4 w-4" />
             Add Section
@@ -149,13 +210,21 @@ export function OutlinesTableV2() {
         <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
+              <TableHead className="w-[30px]">
+                <input
+                  type="checkbox"
+                  checked={selectedRows.size === currentOutlines.length && currentOutlines.length > 0}
+                  onChange={toggleAllRows}
+                  className="cursor-pointer"
+                />
+              </TableHead>
               <TableHead className="w-[30px]"></TableHead>
-              <TableHead className="font-semibold">Header</TableHead>
-              <TableHead className="font-semibold">Section Type</TableHead>
-              <TableHead className="font-semibold">Status</TableHead>
-              <TableHead className="font-semibold text-right">Target</TableHead>
-              <TableHead className="font-semibold text-right">Limit</TableHead>
-              <TableHead className="font-semibold">Reviewer</TableHead>
+              {visibleColumns.header && <TableHead className="font-semibold">Header</TableHead>}
+              {visibleColumns.sectionType && <TableHead className="font-semibold">Section Type</TableHead>}
+              {visibleColumns.status && <TableHead className="font-semibold">Status</TableHead>}
+              {visibleColumns.target && <TableHead className="font-semibold text-right">Target</TableHead>}
+              {visibleColumns.limit && <TableHead className="font-semibold text-right">Limit</TableHead>}
+              {visibleColumns.reviewer && <TableHead className="font-semibold">Reviewer</TableHead>}
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
           </TableHeader>
@@ -170,31 +239,45 @@ export function OutlinesTableV2() {
               currentOutlines.map((outline) => (
                 <TableRow key={outline.id} className="hover:bg-gray-50">
                   <TableCell>
-                    <GripVertical className="h-4 w-4 text-gray-400 cursor-move" />
-                  </TableCell>
-                  <TableCell
-                    className="font-medium cursor-pointer hover:text-blue-600"
-                    onClick={() => handleEdit(outline)}
-                  >
-                    {outline.header}
-                  </TableCell>
-                  <TableCell className="text-gray-600 text-sm">
-                    {formatSectionType(outline.sectionType)}
+                    <input
+                      type="checkbox"
+                      checked={selectedRows.has(outline.id)}
+                      onChange={() => toggleRowSelection(outline.id)}
+                      className="cursor-pointer"
+                    />
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className={cn("h-2 w-2 rounded-full", 
-                        outline.status === 'Completed' ? 'bg-green-500' :
-                        outline.status === 'InProgress' ? 'bg-yellow-500' : 'bg-gray-300'
-                      )} />
-                      <span className={cn("text-sm", getStatusColor(outline.status))}>
-                        {outline.status === 'InProgress' ? 'In Progress' : outline.status}
-                      </span>
-                    </div>
+                    <GripVertical className="h-4 w-4 text-gray-400 cursor-move" />
                   </TableCell>
-                  <TableCell className="text-right text-sm">{outline.target}</TableCell>
-                  <TableCell className="text-right text-sm">{outline.limit}</TableCell>
-                  <TableCell className="text-sm text-gray-600">{outline.reviewer}</TableCell>
+                  {visibleColumns.header && (
+                    <TableCell
+                      className="font-medium cursor-pointer hover:text-blue-600"
+                      onClick={() => handleEdit(outline)}
+                    >
+                      {outline.header}
+                    </TableCell>
+                  )}
+                  {visibleColumns.sectionType && (
+                    <TableCell className="text-gray-600 text-sm">
+                      {formatSectionType(outline.sectionType)}
+                    </TableCell>
+                  )}
+                  {visibleColumns.status && (
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div className={cn("h-2 w-2 rounded-full", 
+                          outline.status === 'Completed' ? 'bg-green-500' :
+                          outline.status === 'InProgress' ? 'bg-yellow-500' : 'bg-gray-300'
+                        )} />
+                        <span className={cn("text-sm", getStatusColor(outline.status))}>
+                          {outline.status === 'InProgress' ? 'In Progress' : outline.status}
+                        </span>
+                      </div>
+                    </TableCell>
+                  )}
+                  {visibleColumns.target && <TableCell className="text-right text-sm">{outline.target}</TableCell>}
+                  {visibleColumns.limit && <TableCell className="text-right text-sm">{outline.limit}</TableCell>}
+                  {visibleColumns.reviewer && <TableCell className="text-sm text-gray-600">{outline.reviewer}</TableCell>}
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

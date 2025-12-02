@@ -6,14 +6,15 @@ import { handleApiError, requireOrgMember, ApiError } from '@/lib/middleware/org
 // GET /api/organizations/:orgId/outlines - List outlines
 export async function GET(
   req: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
+    const { orgId } = await params
     const session = await requireAuth()
-    await requireOrgMember(session.user.id, params.orgId)
+    await requireOrgMember(session.user.id, orgId)
 
     const outlines = await prisma.outline.findMany({
-      where: { organizationId: params.orgId },
+      where: { organizationId: orgId },
       orderBy: { createdAt: 'desc' }
     })
 
@@ -26,11 +27,12 @@ export async function GET(
 // POST /api/organizations/:orgId/outlines - Create outline
 export async function POST(
   req: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
+    const { orgId } = await params
     const session = await requireAuth()
-    await requireOrgMember(session.user.id, params.orgId)
+    await requireOrgMember(session.user.id, orgId)
 
     const body = await req.json()
     const { header, sectionType, status, target, limit, reviewer } = body
@@ -48,7 +50,6 @@ export async function POST(
     // Validate enums
     const validSectionTypes = ['TableOfContents', 'ExecutiveSummary', 'TechnicalApproach', 'Design', 'Capabilities', 'FocusDocument', 'Narrative']
     const validStatuses = ['Pending', 'InProgress', 'Completed']
-    const validReviewers = ['Assim', 'Bini', 'Mami']
 
     if (!validSectionTypes.includes(sectionType)) {
       console.error('Invalid section type:', sectionType)
@@ -60,11 +61,6 @@ export async function POST(
       throw new ApiError(400, 'Invalid status')
     }
 
-    if (!validReviewers.includes(reviewer)) {
-      console.error('Invalid reviewer:', reviewer)
-      throw new ApiError(400, 'Invalid reviewer')
-    }
-
     // Validate numbers
     if (typeof target !== 'number' || typeof limit !== 'number' || isNaN(target) || isNaN(limit)) {
       console.error('Invalid numbers - Target:', target, typeof target, 'Limit:', limit, typeof limit)
@@ -73,7 +69,7 @@ export async function POST(
 
     const outline = await prisma.outline.create({
       data: {
-        organizationId: params.orgId,
+        organizationId: orgId,
         header,
         sectionType,
         status,

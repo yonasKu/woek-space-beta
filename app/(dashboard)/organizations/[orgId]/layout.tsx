@@ -3,16 +3,18 @@ import { getSession } from '@/lib/auth/server'
 import prisma from '@/lib/db/client'
 import { TabsNav } from '@/components/dashboard/tabs-nav'
 import { SignOutButton } from '@/components/auth/sign-out-button'
+import { OrgSwitcher } from '@/components/dashboard/org-switcher'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
-  params: { orgId: string }
+  params: Promise<{ orgId: string }>
 }
 
 export default async function DashboardLayout({
   children,
   params,
 }: DashboardLayoutProps) {
+  const { orgId } = await params
   const session = await getSession()
   
   if (!session) {
@@ -23,7 +25,7 @@ export default async function DashboardLayout({
   const member = await prisma.organizationMember.findFirst({
     where: {
       userId: session.user.id,
-      organizationId: params.orgId,
+      organizationId: orgId,
     },
     include: {
       organization: true,
@@ -38,23 +40,11 @@ export default async function DashboardLayout({
     <div className="flex min-h-screen bg-gray-50">
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
-        {/* Organization Header */}
-        <div className="p-4 border-b border-gray-200">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-black rounded-lg flex items-center justify-center text-white font-semibold">
-              {member.organization.name.charAt(0)}
-            </div>
-            <div className="flex-1">
-              <h2 className="font-semibold text-sm">{member.organization.name}</h2>
-              <p className="text-xs text-gray-500">Enterprise</p>
-            </div>
-            <button className="text-gray-400 hover:text-gray-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          </div>
-        </div>
+        {/* Organization Switcher */}
+        <OrgSwitcher 
+          currentOrgId={orgId}
+          currentOrgName={member.organization.name}
+        />
 
         {/* Navigation */}
         <nav className="flex-1 p-4">
@@ -62,7 +52,7 @@ export default async function DashboardLayout({
             <h3 className="text-xs font-semibold text-gray-500 uppercase mb-3">Platform</h3>
             <div className="space-y-1">
               <a
-                href={`/organizations/${params.orgId}/outlines`}
+                href={`/organizations/${orgId}/outlines`}
                 className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-900 bg-gray-100 rounded-lg"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,7 +61,7 @@ export default async function DashboardLayout({
                 Table
               </a>
               <a
-                href={`/organizations/${params.orgId}/team`}
+                href={`/organizations/${orgId}/team`}
                 className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -91,7 +81,7 @@ export default async function DashboardLayout({
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        <TabsNav orgId={params.orgId} />
+        <TabsNav orgId={orgId} />
         <main className="flex-1">{children}</main>
       </div>
     </div>

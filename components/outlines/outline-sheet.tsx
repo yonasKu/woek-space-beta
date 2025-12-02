@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import {
   Sheet,
@@ -28,12 +28,31 @@ interface OutlineSheetProps {
   onSuccess: () => void
 }
 
+interface Member {
+  id: string
+  user: {
+    name: string | null
+    email: string
+  }
+}
+
 export function OutlineSheet({ outline, open, onOpenChange, onSuccess }: OutlineSheetProps) {
   const params = useParams()
   const orgId = params.orgId as string
   
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [members, setMembers] = useState<Member[]>([])
+
+  // Fetch organization members
+  useEffect(() => {
+    if (open && orgId) {
+      fetch(`/api/organizations/${orgId}/members`)
+        .then(res => res.json())
+        .then(data => setMembers(data))
+        .catch(err => console.error('Failed to fetch members:', err))
+    }
+  }, [open, orgId])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -164,14 +183,17 @@ export function OutlineSheet({ outline, open, onOpenChange, onSuccess }: Outline
 
           <div className="space-y-2">
             <Label htmlFor="reviewer">Reviewer</Label>
-            <Select name="reviewer" defaultValue={outline?.reviewer || ''} required>
+            <Select name="reviewer" defaultValue={outline?.reviewer || ''}>
               <SelectTrigger>
-                <SelectValue placeholder="Select reviewer" />
+                <SelectValue placeholder="Assign reviewer" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Assim">Assim</SelectItem>
-                <SelectItem value="Bini">Bini</SelectItem>
-                <SelectItem value="Mami">Mami</SelectItem>
+                <SelectItem value="">Assign reviewer</SelectItem>
+                {members.map((member) => (
+                  <SelectItem key={member.id} value={member.user.name || member.user.email}>
+                    {member.user.name || member.user.email}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

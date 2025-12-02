@@ -7,11 +7,12 @@ import { randomBytes } from 'crypto'
 // POST /api/organizations/:orgId/members/invite - Invite member (Owner only)
 export async function POST(
   req: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
+    const { orgId } = await params
     const session = await requireAuth()
-    await requireOrgOwner(session.user.id, params.orgId)
+    await requireOrgOwner(session.user.id, orgId)
 
     const body = await req.json()
     const { email } = body
@@ -32,7 +33,7 @@ export async function POST(
     // Check if already a member
     const existingMember = await prisma.organizationMember.findFirst({
       where: {
-        organizationId: params.orgId,
+        organizationId: orgId,
         userId: invitedUser.id,
       }
     })
@@ -47,7 +48,7 @@ export async function POST(
     // Create invitation
     const invitation = await prisma.invitation.create({
       data: {
-        organizationId: params.orgId,
+        organizationId: orgId,
         email,
         invitedBy: session.user.id,
         token,

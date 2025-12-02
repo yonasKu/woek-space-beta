@@ -6,14 +6,15 @@ import { handleApiError, requireOrgMember } from '@/lib/middleware/org-middlewar
 // GET /api/organizations/:orgId - Get organization details
 export async function GET(
   req: NextRequest,
-  { params }: { params: { orgId: string } }
+  { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
+    const { orgId } = await params
     const session = await requireAuth()
-    await requireOrgMember(session.user.id, params.orgId)
+    await requireOrgMember(session.user.id, orgId)
 
     const organization = await prisma.organization.findUnique({
-      where: { id: params.orgId },
+      where: { id: orgId },
       include: {
         owner: {
           select: {

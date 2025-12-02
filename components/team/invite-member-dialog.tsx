@@ -49,16 +49,13 @@ export function InviteMemberDialog({ orgId, open, onOpenChange, onSuccess }: Inv
         throw new Error(data.error || 'Failed to send invitation')
       }
 
-      setSuccess(`Invitation sent to ${email}. They can join using this link: ${data.inviteLink}`)
+      setSuccess(data.inviteLink)
       
       // Reset form
       ;(e.target as HTMLFormElement).reset()
       
-      // Call success callback after a delay to show the success message
-      setTimeout(() => {
-        onSuccess()
-        setSuccess('')
-      }, 3000)
+      // Don't auto-close - let user manually close after copying link
+      onSuccess()
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -67,9 +64,11 @@ export function InviteMemberDialog({ orgId, open, onOpenChange, onSuccess }: Inv
   }
 
   function handleClose() {
-    setError('')
-    setSuccess('')
-    onOpenChange(false)
+    if (!loading) {
+      setError('')
+      setSuccess('')
+      onOpenChange(false)
+    }
   }
 
   return (
@@ -102,8 +101,31 @@ export function InviteMemberDialog({ orgId, open, onOpenChange, onSuccess }: Inv
             )}
 
             {success && (
-              <div className="text-sm text-green-600 bg-green-50 p-3 rounded-md">
-                {success}
+              <div className="space-y-2">
+                <div className="text-sm text-green-600 bg-green-50 p-3 rounded-md">
+                  ✅ Invitation sent successfully!
+                </div>
+                <div className="space-y-2">
+                  <Label>Share this link with the user:</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      value={success}
+                      readOnly
+                      className="font-mono text-xs"
+                      onClick={(e) => (e.target as HTMLInputElement).select()}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        navigator.clipboard.writeText(success)
+                        alert('Link copied to clipboard!')
+                      }}
+                    >
+                      Copy
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
