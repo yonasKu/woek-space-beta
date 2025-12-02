@@ -277,7 +277,11 @@ export function OutlinesTableV2() {
                   )}
                   {visibleColumns.target && <TableCell className="text-right text-sm">{outline.target}</TableCell>}
                   {visibleColumns.limit && <TableCell className="text-right text-sm">{outline.limit}</TableCell>}
-                  {visibleColumns.reviewer && <TableCell className="text-sm text-gray-600">{outline.reviewer}</TableCell>}
+                  {visibleColumns.reviewer && (
+                    <TableCell className="text-sm text-gray-600">
+                      {outline.reviewer || <span className="text-gray-400">Assign reviewer</span>}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

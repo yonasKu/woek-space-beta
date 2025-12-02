@@ -67,13 +67,15 @@ export function OutlineSheet({ outline, open, onOpenChange, onSuccess }: Outline
     const target = Number(targetValue)
     const limit = Number(limitValue)
     
+    const reviewerValue = formData.get('reviewer') as string
+    
     const data = {
       header: formData.get('header') as string,
       sectionType: formData.get('sectionType') as string,
       status: formData.get('status') as string,
       target: isNaN(target) ? 0 : target,
       limit: isNaN(limit) ? 0 : limit,
-      reviewer: formData.get('reviewer') as string,
+      reviewer: reviewerValue === 'unassigned' ? null : reviewerValue,
     }
 
     try {
@@ -183,12 +185,12 @@ export function OutlineSheet({ outline, open, onOpenChange, onSuccess }: Outline
 
           <div className="space-y-2">
             <Label htmlFor="reviewer">Reviewer</Label>
-            <Select name="reviewer" defaultValue={outline?.reviewer || ''}>
+            <Select name="reviewer" defaultValue={outline?.reviewer || 'unassigned'}>
               <SelectTrigger>
                 <SelectValue placeholder="Assign reviewer" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Assign reviewer</SelectItem>
+                <SelectItem value="unassigned">Assign reviewer</SelectItem>
                 {members.map((member) => (
                   <SelectItem key={member.id} value={member.user.name || member.user.email}>
                     {member.user.name || member.user.email}

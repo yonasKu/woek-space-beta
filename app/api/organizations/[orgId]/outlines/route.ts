@@ -35,16 +35,13 @@ export async function POST(
     await requireOrgMember(session.user.id, orgId)
 
     const body = await req.json()
+    console.log('📝 Creating outline with body:', JSON.stringify(body, null, 2))
+    
     const { header, sectionType, status, target, limit, reviewer } = body
 
-    console.log('Received body:', JSON.stringify(body, null, 2))
-    console.log('Target:', target, 'Type:', typeof target, 'isNaN:', isNaN(target))
-    console.log('Limit:', limit, 'Type:', typeof limit, 'isNaN:', isNaN(limit))
-
     // Validate required fields
-    if (!header || !sectionType || !status || target === undefined || limit === undefined || !reviewer) {
-      console.error('Validation failed: missing required fields')
-      throw new ApiError(400, 'All fields are required')
+    if (!header || !sectionType || !status || target === undefined || limit === undefined) {
+      throw new ApiError(400, 'Header, section type, status, target, and limit are required')
     }
 
     // Validate enums
@@ -52,20 +49,30 @@ export async function POST(
     const validStatuses = ['Pending', 'InProgress', 'Completed']
 
     if (!validSectionTypes.includes(sectionType)) {
-      console.error('Invalid section type:', sectionType)
       throw new ApiError(400, 'Invalid section type')
     }
 
     if (!validStatuses.includes(status)) {
-      console.error('Invalid status:', status)
       throw new ApiError(400, 'Invalid status')
     }
 
-    // Validate numbers
-    if (typeof target !== 'number' || typeof limit !== 'number' || isNaN(target) || isNaN(limit)) {
-      console.error('Invalid numbers - Target:', target, typeof target, 'Limit:', limit, typeof limit)
-      throw new ApiError(400, `Target and limit must be valid numbers. Got target: ${target} (${typeof target}), limit: ${limit} (${typeof limit})`)
+    // Validate and convert numbers
+    const targetNum = typeof target === 'number' ? target : Number(target)
+    const limitNum = typeof limit === 'number' ? limit : Number(limit)
+    
+    if (isNaN(targetNum) || isNaN(limitNum)) {
+      throw new ApiError(400, 'Target and limit must be valid numbers')
     }
+
+    console.log('✅ Validation passed, creating outline with:', {
+      organizationId: orgId,
+      header,
+      sectionType,
+      status,
+      target: targetNum,
+      limit: limitNum,
+      reviewer: reviewer || null,
+    })
 
     const outline = await prisma.outline.create({
       data: {
@@ -73,14 +80,16 @@ export async function POST(
         header,
         sectionType,
         status,
-        target,
-        limit,
-        reviewer,
+        target: targetNum,
+        limit: limitNum,
+        reviewer: reviewer || null,
       }
     })
 
+    console.log('🎉 Outline created successfully:', outline.id)
     return NextResponse.json(outline, { status: 201 })
   } catch (error) {
+    console.error('❌ Error creating outline:', error)
     return handleApiError(error)
   }
 }
