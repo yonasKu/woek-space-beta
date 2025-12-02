@@ -29,10 +29,22 @@ import {
 import { OutlineSheet } from './outline-sheet'
 import type { Outline } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
-export function OutlinesTableV2() {
+interface OutlinesTableV2Props {
+  userRole: 'Owner' | 'Member'
+}
+
+export function OutlinesTableV2({ userRole }: OutlinesTableV2Props) {
   const params = useParams()
   const orgId = params.orgId as string
+  const isOwner = userRole === 'Owner'
   
   const [outlines, setOutlines] = useState<Outline[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,6 +56,7 @@ export function OutlinesTableV2() {
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
+  const [members, setMembers] = useState<Array<{ id: string; user: { name: string | null; email: string } }>>([])
   const [visibleColumns, setVisibleColumns] = useState({
     header: true,
     sectionType: true,
@@ -56,6 +69,7 @@ export function OutlinesTableV2() {
 
   useEffect(() => {
     fetchOutlines()
+    fetchMembers()
   }, [orgId])
 
   async function fetchOutlines() {
@@ -69,6 +83,34 @@ export function OutlinesTableV2() {
       console.error('Failed to fetch outlines:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function fetchMembers() {
+    try {
+      const response = await fetch(`/api/organizations/${orgId}/members`)
+      if (response.ok) {
+        const data = await response.json()
+        setMembers(data)
+      }
+    } catch (error) {
+      console.error('Failed to fetch members:', error)
+    }
+  }
+
+  async function handleReviewerChange(outlineId: string, reviewer: string) {
+    try {
+      const response = await fetch(`/api/organizations/${orgId}/outlines/${outlineId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reviewer: reviewer === 'unassigned' ? null : reviewer }),
+      })
+
+      if (response.ok) {
+        await fetchOutlines()
+      }
+    } catch (error) {
+      console.error('Failed to update reviewer:', error)
     }
   }
 
@@ -198,10 +240,12 @@ export function OutlinesTableV2() {
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button onClick={handleAdd} size="sm">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Section
-          </Button>
+          {isOwner && (
+            <Button onClick={handleAdd} size="sm">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Section
+            </Button>
+          )}
         </div>
       </div>
 
@@ -251,8 +295,8 @@ export function OutlinesTableV2() {
                   </TableCell>
                   {visibleColumns.header && (
                     <TableCell
-                      className="font-medium cursor-pointer hover:text-blue-600"
-                      onClick={() => handleEdit(outline)}
+                      className={isOwner ? "font-medium cursor-pointer hover:text-blue-600" : "font-medium"}
+                      onClick={() => isOwner && handleEdit(outline)}
                     >
                       {outline.header}
                     </TableCell>
@@ -278,29 +322,51 @@ export function OutlinesTableV2() {
                   {visibleColumns.target && <TableCell className="text-right text-sm">{outline.target}</TableCell>}
                   {visibleColumns.limit && <TableCell className="text-right text-sm">{outline.limit}</TableCell>}
                   {visibleColumns.reviewer && (
-                    <TableCell className="text-sm text-gray-600">
-                      {outline.reviewer || <span className="text-gray-400">Assign reviewer</span>}
+                    <TableCell>
+                      {outline.reviewer ? (
+                        <span className="text-sm text-gray-600">{outline.reviewer}</span>
+                      ) : isOwner ? (
+                        <Select
+                          value="unassigned"
+                          onValueChange={(value) => handleReviewerChange(outline.id, value)}
+                        >
+                          <SelectTrigger className="h-8 w-[140px] bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100">
+                            <SelectValue placeholder="Assign reviewer" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {members.map((member) => (
+                              <SelectItem key={member.id} value={member.user.name || member.user.email}>
+                                {member.user.name || member.user.email}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span className="text-sm text-gray-400">Assign reviewer</span>
+                      )}
                     </TableCell>
                   )}
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(outline)}>
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleDelete(outline)}
-                          className="text-red-600"
-                        >
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {isOwner && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEdit(outline)}>
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDelete(outline)}
+                            className="text-red-600"
+                          >
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </TableCell>
                 </TableRow>
               ))
